@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - ninja
+  - python
+  - matplotlib
+  - seaborn

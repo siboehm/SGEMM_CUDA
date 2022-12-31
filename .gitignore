@@ -1,0 +1,12 @@
+build/
+cmake-build-debug/
+cmake-build-release/
+.vscode/
+.idea/
+
+# binaries
+cuBLAS_sgemm
+simplest
+
+# benchmark results
+benchmark_results/
