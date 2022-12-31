@@ -11,17 +11,15 @@ Running the kernels on a NVIDIA A6000:
 
 GFLOPs at matrix size 4092x4092:
 <!-- benchmark_results -->
-
 | Kernel              |   GFLOPs | Performance relative to cuBLAS   |
 |:--------------------|---------:|:---------------------------------|
-| 1: Naive            |    309.5 | 1.3%                             |
-| 2: GMEM Coalescing  |   2006.3 | 8.2%                             |
-| 3: SMEM Blocktiling |   2984   | 12.2%                            |
-| 4: 1D Warptiling    |   8626.8 | 35.3%                            |
-| 5: 2D Warptiling    |  16134.3 | 66.0%                            |
-| 6: Vectorize        |  19130.3 | 78.3%                            |
-| 0: cuBLAS           |  24441.4 | 100.0%                           |
-
+| 1: Naive            |    307.2 | 1.3%                             |
+| 2: GMEM Coalescing  |   1987.2 | 8.4%                             |
+| 3: SMEM Blocktiling |   2981.3 | 12.6%                            |
+| 4: 1D Warptiling    |   8508.3 | 36.0%                            |
+| 5: 2D Warptiling    |  16319   | 69.0%                            |
+| 6: Vectorize        |  19281.4 | 81.5%                            |
+| 0: cuBLAS           |  23663.6 | 100.0%                           |
 <!-- benchmark_results -->
 
 ## Develop
