@@ -22,14 +22,14 @@ GFLOPs at matrix size 4092x4092:
 | 0: cuBLAS           |  23663.6 | 100.0%                           |
 <!-- benchmark_results -->
 
-## Develop
+## Setup
 
+1. Install dependencies: CUDA toolkit, Python (+ Seaborn), CMake, Ninja. See [environment.yml](environment.yml).
 1. Configure NVCC compilation parameters. Look up your GPUs compute
    capability [here](https://developer.nvidia.com/cuda-gpus). Then configure the `CMakeLists.txt`:
     ```cmake
     set_target_properties(sgemm PROPERTIES CUDA_ARCHITECTURES 86)
     ```
-1. Install dependencies: CUDA toolkit, Python (+ Seaborn), CMake, Ninja. See [environment.yml](environment.yml).
 1. `mkdir build && cd build && cmake .. -GNinja && ninja`
 1. `./sgemm <kernel number>`
 
