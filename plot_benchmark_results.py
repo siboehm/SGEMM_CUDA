@@ -23,10 +23,10 @@ KERNEL_NAMES = {
     0: "cuBLAS",
     1: "Naive",
     2: "GMEM Coalescing",
-    3: "SMEM Blocktiling",
+    3: "SMEM Caching",
     4: "1D Warptiling",
     5: "2D Warptiling",
-    6: "Vectorize",
+    6: "Vectorized Mem access",
 }
 
 

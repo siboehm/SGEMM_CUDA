@@ -10,8 +10,9 @@
 #define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
 
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
-__global__ void sgemmTensorCores(int M, int N, int K, float alpha, float *A,
-                                 float *B, float beta, float *C) {
+__global__ void sgemmResolveBankConflicts(int M, int N, int K, float alpha,
+                                          float *A, float *B, float beta,
+                                          float *C) {
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
@@ -57,6 +58,7 @@ __global__ void sgemmTensorCores(int M, int N, int K, float alpha, float *A,
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
     // populate the SMEM caches
+    // transpose A while loading it
     float4 tmp =
         reinterpret_cast<float4 *>(&A[innerRowA * K + innerColA * 4])[0];
     As[(innerColA * 4 + 0) * BM + innerRowA] = tmp.x;
@@ -64,8 +66,12 @@ __global__ void sgemmTensorCores(int M, int N, int K, float alpha, float *A,
     As[(innerColA * 4 + 2) * BM + innerRowA] = tmp.z;
     As[(innerColA * 4 + 3) * BM + innerRowA] = tmp.w;
 
-    reinterpret_cast<float4 *>(&Bs[innerRowB * BN + innerColB * 4])[0] =
-        reinterpret_cast<float4 *>(&B[innerRowB * N + innerColB * 4])[0];
+    // "linearize" Bs while storing it
+    tmp = reinterpret_cast<float4 *>(&B[innerRowB * N + innerColB * 4])[0];
+    Bs[((innerColB % 2) * 4 + innerRowB * 8 + 0) * 16 + innerColB / 2] = tmp.x;
+    Bs[((innerColB % 2) * 4 + innerRowB * 8 + 1) * 16 + innerColB / 2] = tmp.y;
+    Bs[((innerColB % 2) * 4 + innerRowB * 8 + 2) * 16 + innerColB / 2] = tmp.z;
+    Bs[((innerColB % 2) * 4 + innerRowB * 8 + 3) * 16 + innerColB / 2] = tmp.w;
     __syncthreads();
 
     // advance blocktile
@@ -79,7 +85,7 @@ __global__ void sgemmTensorCores(int M, int N, int K, float alpha, float *A,
         regM[i] = As[dotIdx * BM + threadRow * TM + i];
       }
       for (uint i = 0; i < TN; ++i) {
-        regN[i] = Bs[dotIdx * BN + threadCol * TN + i];
+        regN[i] = Bs[(dotIdx * 8 + i) * 16 + threadCol];
       }
       for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
         for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
