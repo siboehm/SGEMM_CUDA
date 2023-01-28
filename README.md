@@ -2,6 +2,7 @@
 
 Step-by-step optimization of matrix multiplication, implemented in CUDA.
 For an explanation of each kernel, see [siboehm.com/CUDA-MMM](https://siboehm.com/articles/22/CUDA-MMM).
+This repo is inspired by [wangzyon/NVIDIA_SGEMM_PRACTICE](https://github.com/wangzyon/NVIDIA_SGEMM_PRACTICE).
 
 ## Overview
 

@@ -6,4 +6,4 @@
 #include "kernels/4_kernel_1D_warptiling.cuh"
 #include "kernels/5_kernel_2D_warptiling.cuh"
 #include "kernels/6_kernel_vectorize.cuh"
-#include "kernels/7_kernel_tensorcores.cuh"
+#include "kernels/7_kernel_resolve_bank_conflicts.cuh"
