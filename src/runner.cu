@@ -288,24 +288,24 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
 
 void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
-  const uint BK = 16;
-  const uint TM = 8;
-  const uint TN = 8;
+  const uint K9_BK = 16;
+  const uint K9_TM = 8;
+  const uint K9_TN = 8;
   if (M >= 128 and N >= 128) {
-    const uint BM = 128;
-    const uint BN = 128;
-    dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
-    dim3 blockDim((BM * BN) / (TM * TN));
-    sgemmAutotuned<BM, BN, BK, TM, TN>
+    const uint K9_BM = 128;
+    const uint K9_BN = 128;
+    dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
+    dim3 blockDim((K9_BM * K9_BN) / (K9_TM * K9_TN));
+    sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   } else {
     // this is a hacky solution to the underlying problem
     // of not having proper bounds checking in the kernel
-    const uint BM = 64;
-    const uint BN = 64;
-    dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
-    dim3 blockDim((BM * BN) / (TM * TN));
-    sgemmAutotuned<BM, BN, BK, TM, TN>
+    const uint K9_BM = 64;
+    const uint K9_BN = 64;
+    dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
+    dim3 blockDim((K9_BM * K9_BN) / (K9_TM * K9_TN));
+    sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   }
 }
