@@ -40,15 +40,8 @@ __global__ void sgemmResolveBankConflicts(int M, int N, int K, float alpha,
   // we'll load 128bit / 32bit = 4 elements per thread at each step
   const uint innerRowA = threadIdx.x / (BK / 4);
   const uint innerColA = threadIdx.x % (BK / 4);
-  // calculates the number of rows of As that are being loaded in a single step
-  // by a single block
-  const uint rowStrideA = (numThreadsBlocktile * 4) / BK;
   const uint innerRowB = threadIdx.x / (BN / 4);
   const uint innerColB = threadIdx.x % (BN / 4);
-  // for both As and Bs we want each load to span the full column-width, for
-  // better GMEM coalescing (as opposed to spanning full row-width and iterating
-  // across columns)
-  const uint rowStrideB = numThreadsBlocktile / (BN / 4);
 
   // allocate thread-local cache for results in registerfile
   float threadResults[TM * TN] = {0.0};
