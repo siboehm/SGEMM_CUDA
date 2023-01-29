@@ -286,8 +286,8 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
   }
 }
 
-void runSgemmGeneralize(int M, int N, int K, float alpha, float *A, float *B,
-                        float beta, float *C) {
+void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
+                       float beta, float *C) {
   const uint BK = 16;
   const uint TM = 8;
   const uint TN = 8;
@@ -296,7 +296,7 @@ void runSgemmGeneralize(int M, int N, int K, float alpha, float *A, float *B,
     const uint BN = 128;
     dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
     dim3 blockDim((BM * BN) / (TM * TN));
-    sgemmGeneralize<BM, BN, BK, TM, TN>
+    sgemmAutotuned<BM, BN, BK, TM, TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   } else {
     // this is a hacky solution to the underlying problem
@@ -305,7 +305,7 @@ void runSgemmGeneralize(int M, int N, int K, float alpha, float *A, float *B,
     const uint BN = 64;
     dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
     dim3 blockDim((BM * BN) / (TM * TN));
-    sgemmGeneralize<BM, BN, BK, TM, TN>
+    sgemmAutotuned<BM, BN, BK, TM, TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   }
 }
@@ -341,7 +341,7 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     runSgemmResolveBankExtraCol(M, N, K, alpha, A, B, beta, C);
     break;
   case 9:
-    runSgemmGeneralize(M, N, K, alpha, A, B, beta, C);
+    runSgemmAutotuned(M, N, K, alpha, A, B, beta, C);
     break;
   default:
     throw std::invalid_argument("Unknown kernel number");

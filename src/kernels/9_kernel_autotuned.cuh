@@ -10,14 +10,14 @@
 #define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
 
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
-__global__ void sgemmGeneralize(int M, int N, int K, float alpha, float *A,
-                                float *B, float beta, float *C) {
+__global__ void sgemmAutotuned(int M, int N, int K, float alpha, float *A,
+                               float *B, float beta, float *C) {
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
-  const uint totalResultsBlocktile = BM * BN;
+  constexpr uint totalResultsBlocktile = BM * BN;
   // A thread is responsible for calculating TM*TN elements in the blocktile
-  const uint numThreadsBlocktile = totalResultsBlocktile / (TM * TN);
+  constexpr uint numThreadsBlocktile = totalResultsBlocktile / (TM * TN);
 
   // ResultsPerBlock / ResultsPerThread == ThreadsPerBlock
   assert(numThreadsBlocktile == blockDim.x);
@@ -39,10 +39,11 @@ __global__ void sgemmGeneralize(int M, int N, int K, float alpha, float *A,
   // we'll load 128bit / 32bit = 4 elements per thread at each step
   const uint innerRowA = threadIdx.x / (BK / 4);
   const uint innerColA = threadIdx.x % (BK / 4);
-  const uint rowStrideA = (numThreadsBlocktile * 4) / BK;
+  constexpr uint rowStrideA = (numThreadsBlocktile * 4) / BK;
+
   const uint innerRowB = threadIdx.x / (BN / 4);
   const uint innerColB = threadIdx.x % (BN / 4);
-  const uint rowStrideB = numThreadsBlocktile / (BN / 4);
+  constexpr uint rowStrideB = numThreadsBlocktile / (BN / 4);
 
   // allocate thread-local cache for results in registerfile
   float threadResults[TM * TN] = {0.0};
@@ -52,16 +53,22 @@ __global__ void sgemmGeneralize(int M, int N, int K, float alpha, float *A,
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
     // populate the SMEM caches
-    // transpose A while loading it
-    float4 tmp =
-        reinterpret_cast<float4 *>(&A[innerRowA * K + innerColA * 4])[0];
-    As[(innerColA * 4 + 0) * BM + innerRowA] = tmp.x;
-    As[(innerColA * 4 + 1) * BM + innerRowA] = tmp.y;
-    As[(innerColA * 4 + 2) * BM + innerRowA] = tmp.z;
-    As[(innerColA * 4 + 3) * BM + innerRowA] = tmp.w;
+    for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
+      float4 tmp = reinterpret_cast<float4 *>(
+          &A[(innerRowA + offset) * K + innerColA * 4])[0];
+      // transpose A while storing it
+      As[(innerColA * 4 + 0) * BM + innerRowA + offset] = tmp.x;
+      As[(innerColA * 4 + 1) * BM + innerRowA + offset] = tmp.y;
+      As[(innerColA * 4 + 2) * BM + innerRowA + offset] = tmp.z;
+      As[(innerColA * 4 + 3) * BM + innerRowA + offset] = tmp.w;
+    }
 
-    reinterpret_cast<float4 *>(&Bs[innerRowB * BN + innerColB * 4])[0] =
-        reinterpret_cast<float4 *>(&B[innerRowB * N + innerColB * 4])[0];
+    for (uint offset = 0; offset + rowStrideB <= BK; offset += rowStrideB) {
+      reinterpret_cast<float4 *>(
+          &Bs[(innerRowB + offset) * BN + innerColB * 4])[0] =
+          reinterpret_cast<float4 *>(
+              &B[(innerRowB + offset) * N + innerColB * 4])[0];
+    }
     __syncthreads();
 
     // advance blocktile
