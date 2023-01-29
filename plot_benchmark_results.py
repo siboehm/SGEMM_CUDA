@@ -26,7 +26,10 @@ KERNEL_NAMES = {
     3: "SMEM Caching",
     4: "1D Warptiling",
     5: "2D Warptiling",
-    6: "Vectorized Mem access",
+    6: "Vectorized Mem Access",
+    7: "Avoid Bank Conflicts",
+    8: "Double Buffering",
+    9: "Autotuning",
 }
 
 
