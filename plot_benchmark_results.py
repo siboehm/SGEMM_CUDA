@@ -27,8 +27,8 @@ KERNEL_NAMES = {
     4: "1D Warptiling",
     5: "2D Warptiling",
     6: "Vectorized Mem Access",
-    7: "Avoid Bank Conflicts",
-    8: "Double Buffering",
+    7: "Avoid Bank Conflicts (Linearize)",
+    8: "Avoid Bank Conflicts (Offset)",
     9: "Autotuning",
 }
 
