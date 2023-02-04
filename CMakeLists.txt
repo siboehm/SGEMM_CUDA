@@ -13,7 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 # in debug mode, add debug symbols to device code
 # this disables most optimizations and kills performance
 add_compile_options("$<$<AND:$<CONFIG:Debug>,$<COMPILE_LANGUAGE:CUDA>>:-G;-src-in-ptx>")
-add_compile_options("--ptxas-options=-v")
+# add_compile_options("--ptxas-options=-v")
 
 # Configure header file search paths
 include_directories(${CUDA_INCLUDE_DIRS})

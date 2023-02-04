@@ -23,7 +23,15 @@ int main(int argc, char **argv) {
     std::cerr << "Please enter a valid kernel number (0-11)" << std::endl;
     exit(EXIT_FAILURE);
   }
-  printf("Running kernel %d.\n", kernel_num);
+
+  // get environment variable for device
+  int deviceIdx = 0;
+  if (getenv("DEVICE") != NULL) {
+    deviceIdx = atoi(getenv("DEVICE"));
+  }
+  cudaSetDevice(deviceIdx);
+
+  printf("Running kernel %d on device %d.\n", kernel_num, deviceIdx);
 
   // print some device info
   CudaDeviceInfo();

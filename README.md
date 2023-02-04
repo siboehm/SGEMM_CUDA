@@ -35,6 +35,6 @@ GFLOPs at matrix size 4092x4092:
     set_target_properties(sgemm PROPERTIES CUDA_ARCHITECTURES 86)
     ```
 1. `mkdir build && cd build && cmake .. -GNinja && ninja`
-1. `./sgemm <kernel number>`
+1. `DEVICE=<device_id> ./sgemm <kernel number>`
 
 For profiling, download [NVIDIA Nsight Compute](https://developer.nvidia.com/nsight-compute).
