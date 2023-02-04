@@ -19,6 +19,9 @@ cd "../build"
 RUNNER="../src/runner.cu"
 OUTPUT="../scripts/kernel_9_autotune_results.txt"
 
+# Set GPU to use
+export DEVICE="2"
+
 # Loop through all combinations of parameters
 for bk in $BK_VALUES; do
   for tm in $TM_VALUES; do
@@ -36,9 +39,9 @@ for bk in $BK_VALUES; do
           ninja 
 
           echo "BK=$bk TM=$tm TN=$tn BM=$bm BN=$bn" | tee -a $OUTPUT
-
           # Run the benchmark and get the result
-          ./sgemm 9 | tee -a $OUTPUT
+          # Kill the program after 4 seconds if it doesn't finish
+          timeout -v 4 ./sgemm 9 | tee -a $OUTPUT
         done
       done
     done
