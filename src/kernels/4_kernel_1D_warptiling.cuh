@@ -22,13 +22,6 @@ __global__ void sgemm1DWarpTiling(int M, int N, int K, float alpha,
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
-  const uint totalResultsBlocktile = BM * BN;
-  // A thread is responsible for calculating TM elements in the blocktile
-  const uint numThreadsBlocktile = totalResultsBlocktile / TM;
-
-  // ResultsPerBlock / ResultsPerThread == ThreadsPerBlock
-  assert(numThreadsBlocktile == blockDim.x);
-
   // each warp will calculate 32*TM elements, with 32 being the columnar dim.
   const int threadCol = threadIdx.x % BN;
   const int threadRow = threadIdx.x / BN;

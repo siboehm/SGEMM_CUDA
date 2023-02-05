@@ -15,13 +15,6 @@ __global__ void sgemmVectorize(int M, int N, int K, float alpha, float *A,
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
-  const uint totalResultsBlocktile = BM * BN;
-  // A thread is responsible for calculating TM*TN elements in the blocktile
-  const uint numThreadsBlocktile = totalResultsBlocktile / (TM * TN);
-
-  // ResultsPerBlock / ResultsPerThread == ThreadsPerBlock
-  assert(numThreadsBlocktile == blockDim.x);
-
   // BN/TN are the number of threads to span a column
   const int threadCol = threadIdx.x % (BN / TN);
   const int threadRow = threadIdx.x / (BN / TN);
