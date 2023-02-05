@@ -288,26 +288,28 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
 
 void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
+  const uint NUM_THREADS = 256;
   const uint K9_BK = 16;
   const uint K9_TM = 8;
   const uint K9_TN = 8;
-  if (M >= 128 and N >= 128) {
-    const uint K9_BM = 128;
-    const uint K9_BN = 128;
-    dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
-    dim3 blockDim((K9_BM * K9_BN) / (K9_TM * K9_TN));
-    sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
-        <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  } else {
-    // this is a hacky solution to the underlying problem
-    // of not having proper bounds checking in the kernel
-    const uint K9_BM = 64;
-    const uint K9_BN = 64;
-    dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
-    dim3 blockDim((K9_BM * K9_BN) / (K9_TM * K9_TN));
-    sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
-        <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
-  }
+  dim3 blockDim(NUM_THREADS);
+  const uint K9_BM = 128;
+  const uint K9_BN = 128;
+
+  static_assert(
+      K9_BN % (16 * K9_TN) == 0,
+      "K9_BN must be a multiple of 16*K9_TN to avoid quantization effects");
+  static_assert(
+      K9_BM % (16 * K9_TM) == 0,
+      "K9_BM must be a multiple of 16*K9_TM to avoid quantization effects");
+  static_assert((K9_BM * K9_BK) % (4 * NUM_THREADS) == 0,
+                "K9_BM*K9_BK must be a multiple of 4*256 to vectorize loads");
+  static_assert((K9_BN * K9_BK) % (4 * NUM_THREADS) == 0,
+                "K9_BN*K9_BK must be a multiple of 4*256 to vectorize loads");
+
+  dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
+  sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
 void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,

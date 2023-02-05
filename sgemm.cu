@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * max_size * max_size,
                        cudaMemcpyHostToDevice));
 
-  int repeat_times = 10;
+  int repeat_times = 25;
   for (int size : SIZE) {
     m = n = k = size;
 
