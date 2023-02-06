@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   printf("Running kernel %d on device %d.\n", kernel_num, deviceIdx);
 
   // print some device info
-  CudaDeviceInfo();
+  // CudaDeviceInfo();
 
   // Declare the handle, create the handle, cublasCreate will return a value of
   // type cublasStatus_t to determine whether the handle was created
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * max_size * max_size,
                        cudaMemcpyHostToDevice));
 
-  int repeat_times = 25;
+  int repeat_times = 50;
   for (int size : SIZE) {
     m = n = k = size;
 
