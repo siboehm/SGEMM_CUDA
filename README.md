@@ -6,7 +6,7 @@ This repo is inspired by [wangzyon/NVIDIA_SGEMM_PRACTICE](https://github.com/wan
 
 ## Overview
 
-Running the kernels on a NVIDIA A6000:
+Running the kernels on a NVIDIA A6000 (Ampere):
 
 ![](benchmark_results.png)
 
