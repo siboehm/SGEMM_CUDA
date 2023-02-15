@@ -12,18 +12,18 @@ Running the kernels on a NVIDIA A6000 (Ampere):
 
 GFLOPs at matrix size 4092x4092:
 <!-- benchmark_results -->
-| Kernel                              |   GFLOPs | Performance relative to cuBLAS   |
-|:------------------------------------|---------:|:---------------------------------|
-| 1: Naive                            |    307.2 | 1.3%                             |
-| 2: GMEM Coalescing                  |   1987.2 | 8.4%                             |
-| 3: SMEM Caching                     |   2981.3 | 12.6%                            |
-| 4: 1D Warptiling                    |   8508.3 | 36.0%                            |
-| 7: Avoid Bank Conflicts (Linearize) |  15397.4 | 65.1%                            |
-| 5: 2D Warptiling                    |  16319   | 69.0%                            |
-| 8: Avoid Bank Conflicts (Offset)    |  16759.5 | 70.8%                            |
-| 6: Vectorized Mem Access            |  19281.4 | 81.5%                            |
-| 9: Autotuning                       |  20549.8 | 86.8%                            |
-| 0: cuBLAS                           |  23663.6 | 100.0%                           |
+| Kernel                              |   GFLOPs/s | Performance relative to cuBLAS   |
+|:------------------------------------|-----------:|:---------------------------------|
+| 1: Naive                            |      307.2 | 1.3%                             |
+| 2: GMEM Coalescing                  |     1987.2 | 8.4%                             |
+| 3: SMEM Caching                     |     2981.3 | 12.6%                            |
+| 4: 1D Warptiling                    |     8679.3 | 36.6%                            |
+| 7: Avoid Bank Conflicts (Linearize) |    15397.4 | 64.9%                            |
+| 5: 2D Warptiling                    |    16480   | 69.5%                            |
+| 8: Avoid Bank Conflicts (Offset)    |    16759.5 | 70.7%                            |
+| 6: Vectorized Mem Access            |    19065   | 80.4%                            |
+| 9: Autotuning                       |    20081.6 | 84.7%                            |
+| 0: cuBLAS                           |    23721.6 | 100.0%                           |
 <!-- benchmark_results -->
 
 ## Setup

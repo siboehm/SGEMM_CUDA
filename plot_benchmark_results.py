@@ -88,7 +88,7 @@ def plot(df: pd.DataFrame):
 
     plt.title("Performance of different kernels")
     plt.xlabel("Matrix size (square, one side)")
-    plt.ylabel("GFLOPs")
+    plt.ylabel("GFLOPs/s")
     plt.tight_layout()
 
     plt.savefig(save_dir / "benchmark_results.png")
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     df["kernel"] = df["kernel"].map({k: f"{k}: {v}" for k, v in KERNEL_NAMES.items()})
     df["relperf"] = df["gflops"] / df[df["kernel"] == "0: cuBLAS"]["gflops"].iloc[0]
     df["relperf"] = df["relperf"].apply(lambda x: f"{x*100:.1f}%")
-    df.columns = ["Kernel", "GFLOPs", "Performance relative to cuBLAS"]
+    df.columns = ["Kernel", "GFLOPs/s", "Performance relative to cuBLAS"]
 
     # update the README.md with the new results
     with open("README.md", "r") as f:
