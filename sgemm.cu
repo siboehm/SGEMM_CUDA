@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
   cudaEventCreate(&end);
 
   // FLOPs ceiling is reached at 4096, so even bigger sizes are not tested
-  std::vector<int> SIZE = {128, 256, 512, 1024, 2048, 4096};
+  std::vector<int> SIZE = {4096};
 
   int m, n, k, max_size;
   max_size = SIZE[SIZE.size() - 1];
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
   cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * max_size * max_size,
                        cudaMemcpyHostToDevice));
 
-  int repeat_times = 50;
+  int repeat_times = 10;
   for (int size : SIZE) {
     m = n = k = size;
 

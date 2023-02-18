@@ -289,12 +289,16 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
 void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
   const uint NUM_THREADS = 256;
-  const uint K9_BK = 16;
-  const uint K9_TM = 8;
-  const uint K9_TN = 8;
-  dim3 blockDim(NUM_THREADS);
-  const uint K9_BM = 128;
   const uint K9_BN = 128;
+  const uint K9_BM = 128;
+  const uint K9_BK = 16;
+  const uint K9_TBN = 64;
+  const uint K9_TBM = 64;
+  const uint K9_WN = 16;
+  const uint K9_WM = 32;
+  const uint K9_TN = 4;
+  const uint K9_TM = 4;
+  dim3 blockDim(NUM_THREADS);
 
   static_assert(
       K9_BN % (16 * K9_TN) == 0,
@@ -308,8 +312,8 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                 "K9_BN*K9_BK must be a multiple of 4*256 to vectorize loads");
 
   dim3 gridDim(CEIL_DIV(N, K9_BN), CEIL_DIV(M, K9_BM));
-  sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TM, K9_TN>
-      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+  sgemmAutotuned<K9_BM, K9_BN, K9_BK, K9_TBM, K9_TBN, K9_WM, K9_WN, K9_TM,
+                 K9_TN><<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
 void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
