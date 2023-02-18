@@ -52,12 +52,12 @@ int main(int argc, char **argv) {
   cudaEventCreate(&beg);
   cudaEventCreate(&end);
 
-  // FLOPs ceiling is reached at 4096, so even bigger sizes are not tested
+  // cuBLAS FLOPs ceiling is reached at 8192
   std::vector<int> SIZE = {128, 256, 512, 1024, 2048, 4096};
 
-  int m, n, k, max_size;
+  long m, n, k, max_size;
   max_size = SIZE[SIZE.size() - 1];
-  printf("max_size=%d\n", max_size);
+  std::cout << "Max size: " << max_size << std::endl;
 
   float alpha = 0.5, beta = 3.0; // GEMM input parameters, C=α*AB+β*C
 
@@ -89,12 +89,12 @@ int main(int argc, char **argv) {
   cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * max_size * max_size,
                        cudaMemcpyHostToDevice));
 
-  int repeat_times = 50;
+  int repeat_times = 500;
   for (int size : SIZE) {
     m = n = k = size;
 
-    printf("dimensions(m=n=k): %d, alpha: %4.2f, beta: %4.2f\n", m, alpha,
-           beta);
+    std::cout << "dimensions(m=n=k) " << m << ", alpha: " << alpha
+              << ", beta: " << beta << std::endl;
     // Verify the correctness of the calculation, and execute it once before the
     // kernel function timing to avoid cold start errors
     if (kernel_num != 0) {
@@ -138,11 +138,12 @@ int main(int argc, char **argv) {
     cudaEventElapsedTime(&elapsed_time, beg, end);
     elapsed_time /= 1000.; // Convert to seconds
 
+    long flops = 2 * m * n * k;
     printf(
         "Average elapsed time: (%7.6f) s, performance: (%7.1f) GFLOPS. size: "
-        "(%d).\n",
+        "(%ld).\n",
         elapsed_time / repeat_times,
-        repeat_times * 2 * 1e-9 * m * n * k / elapsed_time, m);
+        (repeat_times * flops * 1e-9) / elapsed_time, m);
     fflush(stdout);
     // make dC and dC_ref equal again (we modified dC while calling our kernel
     // for benchmarking)
