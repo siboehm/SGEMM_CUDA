@@ -6,3 +6,4 @@ dependencies:
   - python
   - matplotlib
   - seaborn
+  - tabulate

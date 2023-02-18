@@ -13,7 +13,7 @@ from pathlib import Path
 # plt.rcParams["font.family"] = "serif"
 # To set some sane defaults
 matplotlib.style.use("fivethirtyeight")
-matplotlib.style.use("seaborn-talk")
+matplotlib.style.use("seaborn-v0_8-talk")
 matplotlib.rcParams["font.family"] = "monospace"
 matplotlib.rcParams["figure.dpi"] = 200
 plt.rcParams["savefig.facecolor"] = "white"
