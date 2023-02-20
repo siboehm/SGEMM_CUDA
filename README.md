@@ -22,8 +22,9 @@ GFLOPs at matrix size 4092x4092:
 | 8: Avoid Bank Conflicts (Offset)    |    11646.9 | 78.7%                            |
 | 7: Avoid Bank Conflicts (Linearize) |    11923.9 | 80.6%                            |
 | 6: Vectorized Mem Access            |    12088.9 | 81.7%                            |
-| 9: Autotuning                       |    12717.4 | 86.0%                            |
-| 0: cuBLAS                           |    14792.5 | 100.0%                           |
+| 9: Autotuning                       |    12715.3 | 85.9%                            |
+| 10: Warptiling                      |    12828.0   | 86.7%                            |
+| 0: cuBLAS                           |    14797.8 | 100.0%                           |
 <!-- benchmark_results -->
 
 ## Setup
