@@ -51,7 +51,7 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   A += cRow * BM * K;
   B += cCol * BN;
   // Move C_ptr to warp's output tile
-  C += (cRow * BM) * N + cCol * BN;
+  C += (cRow * BM + warpRow * WM) * N + cCol * BN + warpCol * WN;
 
   // calculating the indices that this thread will load into SMEM
   // we'll load 128bit / 32bit = 4 elements per thread at each step
@@ -120,10 +120,9 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
         }
       }
     }
-    __syncthreads();
-
     A += BK;     // move BK columns to right
     B += BK * N; // move BK rows down
+    __syncthreads();
   }
 
   // write out the results
@@ -132,12 +131,9 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
       for (uint resIdxM = 0; resIdxM < TM; resIdxM += 1) {
         for (uint resIdxN = 0; resIdxN < TN; resIdxN += 4) {
           // load C vector into registers
-          float4 tmp =
-              reinterpret_cast<float4 *>(&C[(warpRow * WM + wSubRowIdx * WSUBM +
-                                             threadRowInWarp * TM + resIdxM) *
-                                                N +
-                                            warpCol * WN + wSubColIdx * WSUBN +
-                                            threadColInWarp * TN + resIdxN])[0];
+          float4 tmp = reinterpret_cast<float4 *>(
+              &C[(wSubRowIdx * WSUBM + threadRowInWarp * TM + resIdxM) * N +
+                 wSubColIdx * WSUBN + threadColInWarp * TN + resIdxN])[0];
           // perform GEMM update in reg
           const int i = (wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
                         wSubColIdx * TN + resIdxN;
@@ -146,11 +142,9 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
           tmp.z = alpha * threadResults[i + 2] + beta * tmp.z;
           tmp.w = alpha * threadResults[i + 3] + beta * tmp.w;
           // write back
-          reinterpret_cast<float4 *>(&C[(warpRow * WM + wSubRowIdx * WSUBM +
-                                         threadRowInWarp * TM + resIdxM) *
-                                            N +
-                                        warpCol * WN + wSubColIdx * WSUBN +
-                                        threadColInWarp * TN + resIdxN])[0] =
+          reinterpret_cast<float4 *>(
+              &C[(wSubRowIdx * WSUBM + threadRowInWarp * TM + resIdxM) * N +
+                 +wSubColIdx * WSUBN + threadColInWarp * TN + resIdxN])[0] =
               tmp;
         }
       }
