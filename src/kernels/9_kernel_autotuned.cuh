@@ -8,10 +8,10 @@
 #include <cuda_runtime.h>
 
 #define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
-const int NUM_THREADS = 256;
+const int K9_NUM_THREADS = 256;
 
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
-__global__ void __launch_bounds__(NUM_THREADS)
+__global__ void __launch_bounds__(K9_NUM_THREADS)
     sgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                    float beta, float *C) {
   const uint cRow = blockIdx.y;
@@ -41,10 +41,10 @@ __global__ void __launch_bounds__(NUM_THREADS)
   // we'll load 128bit / 32bit = 4 elements per thread at each step
   const uint innerRowA = threadIdx.x / (BK / 4);
   const uint innerColA = threadIdx.x % (BK / 4);
-  constexpr uint rowStrideA = (NUM_THREADS * 4) / BK;
+  constexpr uint rowStrideA = (K9_NUM_THREADS * 4) / BK;
   const uint innerRowB = threadIdx.x / (BN / 4);
   const uint innerColB = threadIdx.x % (BN / 4);
-  constexpr uint rowStrideB = NUM_THREADS / (BN / 4);
+  constexpr uint rowStrideB = K9_NUM_THREADS / (BN / 4);
 
   // allocate thread-local cache for results in registerfile
   float threadResults[WMITER * WNITER * TM * TN] = {0.0};
@@ -54,6 +54,9 @@ __global__ void __launch_bounds__(NUM_THREADS)
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
     // populate the SMEM caches
+    if (bkIdx != 0) {
+      __syncthreads();
+    }
     for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
       float4 tmp = reinterpret_cast<float4 *>(
           &A[(innerRowA + offset) * K + innerColA * 4])[0];
@@ -71,10 +74,6 @@ __global__ void __launch_bounds__(NUM_THREADS)
               &B[(innerRowB + offset) * N + innerColB * 4])[0];
     }
     __syncthreads();
-
-    // advance blocktile
-    A += BK;     // move BK columns to right
-    B += BK * N; // move BK rows down
 
     for (uint wmIdx = 0; wmIdx < WMITER; ++wmIdx) {
       for (uint wnIdx = 0; wnIdx < WNITER; ++wnIdx) {
@@ -97,7 +96,9 @@ __global__ void __launch_bounds__(NUM_THREADS)
         }
       }
     }
-    __syncthreads();
+    // advance blocktile
+    A += BK;     // move BK columns to right
+    B += BK * N; // move BK rows down
   }
 
   // write out the results
