@@ -14,16 +14,16 @@ GFLOPs at matrix size 4092x4092:
 <!-- benchmark_results -->
 | Kernel                              |   GFLOPs/s | Performance relative to cuBLAS   |
 |:------------------------------------|-----------:|:---------------------------------|
-| 1: Naive                            |      292   | 1.7%                             |
-| 2: GMEM Coalescing                  |     3115.7 | 17.8%                            |
-| 3: SMEM Caching                     |     5448.6 | 31.1%                            |
-| 4: 1D Warptiling                    |    10345.5 | 59.0%                            |
-| 5: 2D Warptiling                    |    14126.6 | 80.6%                            |
-| 8: Avoid Bank Conflicts (Offset)    |    15056.9 | 85.9%                            |
-| 7: Avoid Bank Conflicts (Linearize) |    15157.5 | 86.5%                            |
-| 6: Vectorized Mem Access            |    15334.9 | 87.5%                            |
-| 9: Autotuning                       |    15664.8 | 89.4%                            |
-| 0: cuBLAS                           |    17521.2 | 100.0%                           |
+| 1: Naive                            |      226.9 | 1.5%                             |
+| 2: GMEM Coalescing                  |     2516.5 | 17.0%                            |
+| 3: SMEM Caching                     |     4158   | 28.1%                            |
+| 4: 1D Warptiling                    |     8164.1 | 55.2%                            |
+| 5: 2D Warptiling                    |    11342.7 | 76.7%                            |
+| 8: Avoid Bank Conflicts (Offset)    |    11649.3 | 78.8%                            |
+| 7: Avoid Bank Conflicts (Linearize) |    11920.3 | 80.6%                            |
+| 6: Vectorized Mem Access            |    12090.5 | 81.7%                            |
+| 9: Autotuning                       |    12717.4 | 86.0%                            |
+| 0: cuBLAS                           |    14792.5 | 100.0%                           |
 <!-- benchmark_results -->
 
 ## Setup
