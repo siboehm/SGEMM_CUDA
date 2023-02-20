@@ -30,6 +30,7 @@ KERNEL_NAMES = {
     7: "Avoid Bank Conflicts (Linearize)",
     8: "Avoid Bank Conflicts (Offset)",
     9: "Autotuning",
+    10: "Warptiling",
 }
 
 

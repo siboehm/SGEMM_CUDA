@@ -10,27 +10,38 @@
 #define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
 const int K10_NUM_THREADS = 256;
 
-template <const int BM, const int BN, const int BK, const int TBM,
-          const int TBN, const int WM, const int WN, const int TM, const int TN>
+/*
+ * @tparam BM The threadblock size for M dimension SMEM caching.
+ * @tparam BN The threadblock size for N dimension SMEM caching.
+ * @tparam BK The threadblock size for K dimension SMEM caching.
+ * @tparam WM M dim of continuous tile computed by each warp
+ * @tparam WN N dim of continuous tile computed by each warp
+ * @tparam WMITER The number of subwarp tiling steps in M dimension.
+ * @tparam WNITER The number of subwarp tiling steps in N dimension.
+ * @tparam TM The per-thread tile size for M dimension.
+ * @tparam TN The per-thread tile size for N dimension.
+ */
+template <const int BM, const int BN, const int BK, const int WM, const int WN,
+          const int WMITER, const int WNITER, const int TM, const int TN>
 __global__ void __launch_bounds__(K10_NUM_THREADS)
     sgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                     float beta, float *C) {
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
-  // iterations of threadblock tile
-  constexpr int TBMITER = CEIL_DIV(BM, TBM);
-  constexpr int TBNITER = CEIL_DIV(BN, TBN);
-
   // Placement of the warp in the threadblock tile
   const uint warpIdx = threadIdx.x / warpSize; // the warp this thread is in
-  const uint warpCol = warpIdx % (TBN / WN);
-  const uint warpRow = warpIdx / (TBN / WN);
+  const uint warpCol = warpIdx % (BN / WN);
+  const uint warpRow = warpIdx / (BN / WN);
 
-  // Placement of the thread in the warp tile
-  const uint threadIdxInWarp = threadIdx.x % warpSize; // [0, 31]
-  const uint threadColInWarp = threadIdxInWarp % (WN / TN);
-  const uint threadRowInWarp = threadIdxInWarp / (WN / TN);
+  // size of the warp subtile
+  constexpr uint WSUBM = WM / WMITER; // 64/2=32
+  constexpr uint WSUBN = WN / WNITER; // 32/2=16
+
+  // Placement of the thread in the warp subtile
+  const uint threadIdxInWarp = threadIdx.x % warpSize;         // [0, 31]
+  const uint threadColInWarp = threadIdxInWarp % (WSUBN / TN); // i%(16/4)
+  const uint threadRowInWarp = threadIdxInWarp / (WSUBN / TN); // i/4
 
   // allocate space for the current blocktile in SMEM
   __shared__ float As[BM * BK];
@@ -39,7 +50,8 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   // Move blocktile to beginning of A's row and B's column
   A += cRow * BM * K;
   B += cCol * BN;
-  C += cRow * BM * N + cCol * BN;
+  // Move C_ptr to warp's output tile
+  C += (cRow * BM) * N + cCol * BN;
 
   // calculating the indices that this thread will load into SMEM
   // we'll load 128bit / 32bit = 4 elements per thread at each step
@@ -51,15 +63,13 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   constexpr uint rowStrideB = K10_NUM_THREADS / (BN / 4);
 
   // allocate thread-local cache for results in registerfile
-  float threadResults[TBMITER * TM * TBNITER * TN] = {0.0};
-  float regM[TM] = {0.0};
-  float regN[TN] = {0.0};
+  float threadResults[WMITER * TM * WNITER * TN] = {0.0};
+  // we cache into registers on the warptile level
+  float regM[WMITER * TM] = {0.0};
+  float regN[WNITER * TN] = {0.0};
 
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
-    if (bkIdx != 0) {
-      __syncthreads();
-    }
     for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
       float4 tmp = reinterpret_cast<float4 *>(
           &A[(innerRowA + offset) * K + innerColA * 4])[0];
@@ -78,54 +88,69 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
     }
     __syncthreads();
 
-    for (uint tbmIdx = 0; tbmIdx < TBMITER; ++tbmIdx) {
-      for (uint tbnIdx = 0; tbnIdx < TBNITER; ++tbnIdx) {
-        // calculate per-thread results
-        for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
-          // block into registers
-          for (uint i = 0; i < TM; ++i) {
-            regM[i] = As[dotIdx * BM + (tbmIdx * TBM) + warpRow * WM +
-                         threadRowInWarp * TM + i];
-          }
-          for (uint i = 0; i < TN; ++i) {
-            regN[i] = Bs[dotIdx * BN + (tbnIdx * TBN) + warpCol * WN +
-                         threadColInWarp * TN + i];
-          }
+    for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
+      // populate registers for whole warptile
+      for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+        for (uint i = 0; i < TM; ++i) {
+          regM[wSubRowIdx * TM + i] =
+              As[(dotIdx * BM) + warpRow * WM + wSubRowIdx * WSUBM +
+                 threadRowInWarp * TM + i];
+        }
+      }
+      for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
+        for (uint i = 0; i < TN; ++i) {
+          regN[wSubColIdx * TN + i] =
+              Bs[(dotIdx * BN) + warpCol * WN + wSubColIdx * WSUBN +
+                 threadColInWarp * TN + i];
+        }
+      }
+
+      // execute warptile matmul
+      for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+        for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
+          // calculate per-thread results
           for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
             for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
-              threadResults[(tbmIdx * TM + resIdxM) * (TBNITER * TN) +
-                            tbnIdx * TN + resIdxN] +=
-                  regM[resIdxM] * regN[resIdxN];
+              threadResults[(wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
+                            (wSubColIdx * TN) + resIdxN] +=
+                  regM[wSubRowIdx * TM + resIdxM] *
+                  regN[wSubColIdx * TN + resIdxN];
             }
           }
         }
       }
     }
+    __syncthreads();
+
     A += BK;     // move BK columns to right
     B += BK * N; // move BK rows down
   }
 
   // write out the results
-  for (uint tbmIdx = 0; tbmIdx < TBMITER; ++tbmIdx) {
-    for (uint tbnIdx = 0; tbnIdx < TBNITER; ++tbnIdx) {
-      float *C_interim = C + (tbmIdx * TBM * N) + (tbnIdx * TBN);
+  for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+    for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
       for (uint resIdxM = 0; resIdxM < TM; resIdxM += 1) {
         for (uint resIdxN = 0; resIdxN < TN; resIdxN += 4) {
           // load C vector into registers
-          float4 tmp = reinterpret_cast<float4 *>(
-              &C_interim[(warpRow * WM + threadRowInWarp * TM + resIdxM) * N +
-                         warpCol * WN + threadColInWarp * TN + resIdxN])[0];
+          float4 tmp =
+              reinterpret_cast<float4 *>(&C[(warpRow * WM + wSubRowIdx * WSUBM +
+                                             threadRowInWarp * TM + resIdxM) *
+                                                N +
+                                            warpCol * WN + wSubColIdx * WSUBN +
+                                            threadColInWarp * TN + resIdxN])[0];
           // perform GEMM update in reg
-          const int i =
-              (tbmIdx * TM + resIdxM) * (TBNITER * TN) + tbnIdx * TN + resIdxN;
+          const int i = (wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
+                        wSubColIdx * TN + resIdxN;
           tmp.x = alpha * threadResults[i + 0] + beta * tmp.x;
           tmp.y = alpha * threadResults[i + 1] + beta * tmp.y;
           tmp.z = alpha * threadResults[i + 2] + beta * tmp.z;
           tmp.w = alpha * threadResults[i + 3] + beta * tmp.w;
           // write back
-          reinterpret_cast<float4 *>(
-              &C_interim[(warpRow * WM + threadRowInWarp * TM + resIdxM) * N +
-                         warpCol * WM + threadColInWarp * TN + resIdxN])[0] =
+          reinterpret_cast<float4 *>(&C[(warpRow * WM + wSubRowIdx * WSUBM +
+                                         threadRowInWarp * TM + resIdxM) *
+                                            N +
+                                        warpCol * WN + wSubColIdx * WSUBN +
+                                        threadColInWarp * TN + resIdxN])[0] =
               tmp;
         }
       }
