@@ -15,13 +15,13 @@ GFLOPs at matrix size 4092x4092:
 | Kernel                              |   GFLOPs/s | Performance relative to cuBLAS   |
 |:------------------------------------|-----------:|:---------------------------------|
 | 1: Naive                            |      226.9 | 1.5%                             |
-| 2: GMEM Coalescing                  |     2516.5 | 17.0%                            |
-| 3: SMEM Caching                     |     4158   | 28.1%                            |
-| 4: 1D Warptiling                    |     8164.1 | 55.2%                            |
-| 5: 2D Warptiling                    |    11342.7 | 76.7%                            |
-| 8: Avoid Bank Conflicts (Offset)    |    11649.3 | 78.8%                            |
-| 7: Avoid Bank Conflicts (Linearize) |    11920.3 | 80.6%                            |
-| 6: Vectorized Mem Access            |    12090.5 | 81.7%                            |
+| 2: GMEM Coalescing                  |     2516.7 | 17.0%                            |
+| 3: SMEM Caching                     |     4158.3 | 28.1%                            |
+| 4: 1D Blocktiling                   |     8162.2 | 55.2%                            |
+| 5: 2D Blocktiling                   |    11355.8 | 76.7%                            |
+| 8: Avoid Bank Conflicts (Offset)    |    11646.9 | 78.7%                            |
+| 7: Avoid Bank Conflicts (Linearize) |    11923.9 | 80.6%                            |
+| 6: Vectorized Mem Access            |    12088.9 | 81.7%                            |
 | 9: Autotuning                       |    12717.4 | 86.0%                            |
 | 0: cuBLAS                           |    14792.5 | 100.0%                           |
 <!-- benchmark_results -->
