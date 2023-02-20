@@ -178,20 +178,20 @@ void run_sgemm_shared_mem_block(int M, int N, int K, float alpha, float *A,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
-void runSgemm1DWarpTiling(int M, int N, int K, float alpha, float *A, float *B,
-                          float beta, float *C) {
+void runSgemm1DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
+                           float beta, float *C) {
   const uint BM = 64;
   const uint BN = 64;
   const uint BK = 8;
   const uint TM = 8;
   dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
   dim3 blockDim((BM * BN) / TM);
-  sgemm1DWarpTiling<BM, BN, BK, TM>
+  sgemm1DBlocktiling<BM, BN, BK, TM>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
-void runSgemm2DWarpTiling(int M, int N, int K, float alpha, float *A, float *B,
-                          float beta, float *C) {
+void runSgemm2DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
+                           float beta, float *C) {
   const uint BK = 8;
   const uint TM = 8;
   const uint TN = 8;
@@ -200,7 +200,7 @@ void runSgemm2DWarpTiling(int M, int N, int K, float alpha, float *A, float *B,
     const uint BN = 128;
     dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
     dim3 blockDim((BM * BN) / (TM * TN));
-    sgemm2DWarpTiling<BM, BN, BK, TM, TN>
+    sgemm2DBlocktiling<BM, BN, BK, TM, TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   } else {
     // this is a hacky solution to the underlying problem
@@ -209,7 +209,7 @@ void runSgemm2DWarpTiling(int M, int N, int K, float alpha, float *A, float *B,
     const uint BN = 64;
     dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
     dim3 blockDim((BM * BN) / (TM * TN));
-    sgemm2DWarpTiling<BM, BN, BK, TM, TN>
+    sgemm2DBlocktiling<BM, BN, BK, TM, TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
   }
 }
@@ -321,6 +321,48 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
+                        float beta, float *C) {
+  const uint K10_NUM_THREADS = 256;
+  const uint K10_BN = 128;
+  const uint K10_BM = 128;
+  const uint K10_BK = 16;
+  const uint K10_TBN = 64;
+  const uint K10_TBM = 64;
+  const uint K10_WN = 16;
+  const uint K10_WM = 32;
+  const uint K10_TN = 4;
+  const uint K10_TM = 4;
+  dim3 blockDim(K10_NUM_THREADS);
+
+  static_assert(
+      (K10_NUM_THREADS * 4) % K10_BK == 0,
+      "NUM_THREADS*4 must be multiple of K9_BK to avoid quantization issues "
+      "during GMEM->SMEM tiling (loading only parts of the final row of Bs "
+      "during each iteraion)");
+  static_assert(
+      (K10_NUM_THREADS * 4) % K10_BN == 0,
+      "NUM_THREADS*4 must be multiple of K9_BN to avoid quantization issues "
+      "during GMEM->SMEM tiling (loading only parts of the final row of As "
+      "during each iteration)");
+  static_assert(K10_BN % (16 * K10_TN) == 0,
+                "BN must be a multiple of 16*TN to "
+                "avoid quantization effects");
+  static_assert(K10_BM % (16 * K10_TM) == 0,
+                "BM must be a multiple of 16*TM to "
+                "avoid quantization effects");
+  static_assert((K10_BM * K10_BK) % (4 * K10_NUM_THREADS) == 0,
+                "BM*BK must be a multiple of 4*256 to "
+                "vectorize loads");
+  static_assert((K10_BN * K10_BK) % (4 * K10_NUM_THREADS) == 0,
+                "BN*BK must be a multiple of 4*256 to "
+                "vectorize loads");
+
+  dim3 gridDim(CEIL_DIV(N, K10_BN), CEIL_DIV(M, K10_BM));
+  sgemmWarptiling<K10_BM, K10_BN, K10_BK, K10_TBM, K10_TBN, K10_WM, K10_WN,
+                 K10_TM, K10_TN>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
 void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
                 float *B, float beta, float *C, cublasHandle_t handle) {
   switch (kernel_num) {
@@ -337,10 +379,10 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     run_sgemm_shared_mem_block(M, N, K, alpha, A, B, beta, C);
     break;
   case 4:
-    runSgemm1DWarpTiling(M, N, K, alpha, A, B, beta, C);
+    runSgemm1DBlocktiling(M, N, K, alpha, A, B, beta, C);
     break;
   case 5:
-    runSgemm2DWarpTiling(M, N, K, alpha, A, B, beta, C);
+    runSgemm2DBlocktiling(M, N, K, alpha, A, B, beta, C);
     break;
   case 6:
     runSgemmVectorize(M, N, K, alpha, A, B, beta, C);
@@ -353,6 +395,9 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     break;
   case 9:
     runSgemmAutotuned(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 10:
+    runSgemmWarptiling(M, N, K, alpha, A, B, beta, C);
     break;
   default:
     throw std::invalid_argument("Unknown kernel number");
