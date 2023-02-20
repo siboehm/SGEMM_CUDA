@@ -65,8 +65,8 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   // allocate thread-local cache for results in registerfile
   float threadResults[WMITER * TM * WNITER * TN] = {0.0};
   // we cache into registers on the warptile level
-  float regM[WMITER * TM] = {0.0};
-  float regN[WNITER * TN] = {0.0};
+  float regM[TM] = {0.0};
+  float regN[TN] = {0.0};
 
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
@@ -89,26 +89,17 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
     __syncthreads();
 
     for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
-      // populate registers for whole warptile
-      for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
-        for (uint i = 0; i < TM; ++i) {
-          regM[wSubRowIdx * TM + i] =
-              As[(dotIdx * BM) + warpRow * WM + wSubRowIdx * WSUBM +
-                 threadRowInWarp * TM + i];
-        }
-      }
-      for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
-        for (uint i = 0; i < TN; ++i) {
-          regN[wSubColIdx * TN + i] =
-              Bs[(dotIdx * BN) + warpCol * WN + wSubColIdx * WSUBN +
-                 threadColInWarp * TN + i];
-        }
-      }
-
       // execute warptile matmul
       for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+        for (uint i = 0; i < TM; ++i) {
+          regM[i] = As[(dotIdx * BM) + warpRow * WM + wSubRowIdx * WSUBM +
+                       threadRowInWarp * TM + i];
+        }
         for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
-          // calculate per-thread results
+          for (uint i = 0; i < TN; ++i) {
+            regN[i] = Bs[(dotIdx * BN) + warpCol * WN + wSubColIdx * WSUBN +
+                         threadColInWarp * TN + i];
+          }
           for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
             for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
               threadResults[(wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
