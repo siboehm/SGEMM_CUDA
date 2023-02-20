@@ -1,8 +1,12 @@
 build/
 cmake-build-debug/
 cmake-build-release/
-.vscode/
 .idea/
+
+# VSCode, but include settings.json
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
 
 # binaries
 cuBLAS_sgemm
