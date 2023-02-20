@@ -128,12 +128,14 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   // write out the results
   for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
     for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
+      // move C pointer to current warp subtile
+      float *C_interim = C + (wSubRowIdx * WSUBM) * N + wSubColIdx * WSUBN;
       for (uint resIdxM = 0; resIdxM < TM; resIdxM += 1) {
         for (uint resIdxN = 0; resIdxN < TN; resIdxN += 4) {
           // load C vector into registers
           float4 tmp = reinterpret_cast<float4 *>(
-              &C[(wSubRowIdx * WSUBM + threadRowInWarp * TM + resIdxM) * N +
-                 wSubColIdx * WSUBN + threadColInWarp * TN + resIdxN])[0];
+              &C_interim[(threadRowInWarp * TM + resIdxM) * N +
+                         threadColInWarp * TN + resIdxN])[0];
           // perform GEMM update in reg
           const int i = (wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
                         wSubColIdx * TN + resIdxN;
@@ -143,9 +145,8 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
           tmp.w = alpha * threadResults[i + 3] + beta * tmp.w;
           // write back
           reinterpret_cast<float4 *>(
-              &C[(wSubRowIdx * WSUBM + threadRowInWarp * TM + resIdxM) * N +
-                 +wSubColIdx * WSUBN + threadColInWarp * TN + resIdxN])[0] =
-              tmp;
+              &C_interim[(threadRowInWarp * TM + resIdxM) * N +
+                         threadColInWarp * TN + resIdxN])[0] = tmp;
         }
       }
     }
