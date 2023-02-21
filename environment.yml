@@ -1,3 +1,4 @@
+name: SGEMM_CUDA
 channels:
   - conda-forge
 dependencies:
