@@ -8,7 +8,7 @@
 #include <cuda_runtime.h>
 
 #define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
-const int K10_NUM_THREADS = 256;
+const int WARPSIZE = 32; // warpSize is not constexpr
 
 /*
  * @tparam BM The threadblock size for M dimension SMEM caching.
@@ -22,24 +22,25 @@ const int K10_NUM_THREADS = 256;
  * @tparam TN The per-thread tile size for N dimension.
  */
 template <const int BM, const int BN, const int BK, const int WM, const int WN,
-          const int WMITER, const int WNITER, const int TM, const int TN>
-__global__ void __launch_bounds__(K10_NUM_THREADS)
+          const int WNITER, const int TM, const int TN, const int NUM_THREADS>
+__global__ void __launch_bounds__(NUM_THREADS)
     sgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                     float beta, float *C) {
   const uint cRow = blockIdx.y;
   const uint cCol = blockIdx.x;
 
   // Placement of the warp in the threadblock tile
-  const uint warpIdx = threadIdx.x / warpSize; // the warp this thread is in
+  const uint warpIdx = threadIdx.x / WARPSIZE; // the warp this thread is in
   const uint warpCol = warpIdx % (BN / WN);
   const uint warpRow = warpIdx / (BN / WN);
 
   // size of the warp subtile
+  constexpr uint WMITER = (WM * WN) / (WARPSIZE * TM * TN * WNITER);
   constexpr uint WSUBM = WM / WMITER; // 64/2=32
   constexpr uint WSUBN = WN / WNITER; // 32/2=16
 
   // Placement of the thread in the warp subtile
-  const uint threadIdxInWarp = threadIdx.x % warpSize;         // [0, 31]
+  const uint threadIdxInWarp = threadIdx.x % WARPSIZE;         // [0, 31]
   const uint threadColInWarp = threadIdxInWarp % (WSUBN / TN); // i%(16/4)
   const uint threadRowInWarp = threadIdxInWarp / (WSUBN / TN); // i/4
 
@@ -57,10 +58,10 @@ __global__ void __launch_bounds__(K10_NUM_THREADS)
   // we'll load 128bit / 32bit = 4 elements per thread at each step
   const uint innerRowA = threadIdx.x / (BK / 4);
   const uint innerColA = threadIdx.x % (BK / 4);
-  constexpr uint rowStrideA = (K10_NUM_THREADS * 4) / BK;
+  constexpr uint rowStrideA = (NUM_THREADS * 4) / BK;
   const uint innerRowB = threadIdx.x / (BN / 4);
   const uint innerColB = threadIdx.x % (BN / 4);
-  constexpr uint rowStrideB = K10_NUM_THREADS / (BN / 4);
+  constexpr uint rowStrideB = NUM_THREADS / (BN / 4);
 
   // allocate thread-local cache for results in registerfile
   float threadResults[WMITER * TM * WNITER * TN] = {0.0};

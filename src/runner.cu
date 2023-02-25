@@ -323,16 +323,17 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
 
 void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
-  const uint K10_NUM_THREADS = 256;
+  const uint K10_NUM_THREADS = 128;
   const uint K10_BN = 128;
   const uint K10_BM = 128;
   const uint K10_BK = 16;
-  const uint K10_WMITER = 2;
-  const uint K10_WNITER = 2;
-  const uint K10_WN = 32;
+  const uint K10_WN = 64;
   const uint K10_WM = 64;
-  const uint K10_TN = 4;
+  const uint K10_WMITER = 2;
+  const uint K10_TN = 8;
   const uint K10_TM = 4;
+  constexpr uint K10_WNITER =
+      (K10_WM * K10_WN) / (32 * K10_TM * K10_TN * K10_WMITER);
   dim3 blockDim(K10_NUM_THREADS);
 
   constexpr uint NUM_WARPS = K10_NUM_THREADS / 32;
@@ -344,8 +345,8 @@ void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
   // warpsubtile in warptile
   static_assert((K10_WM % K10_WMITER == 0) and (K10_WN % K10_WNITER == 0));
   // threads in warpsubtile
-  static_assert(
-      (K10_WM / K10_WMITER / K10_TM) * (K10_WN / K10_WNITER / K10_TM) == 32);
+  static_assert((K10_WM * K10_WN) % (WARPSIZE * K10_TM * K10_TN * K10_WNITER) ==
+                0);
 
   static_assert((K10_NUM_THREADS * 4) % K10_BK == 0,
                 "NUM_THREADS*4 must be multiple of K9_BK to avoid quantization "
@@ -365,8 +366,8 @@ void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                 "BN*BK must be a multiple of 4*256 to vectorize loads");
 
   dim3 gridDim(CEIL_DIV(N, K10_BN), CEIL_DIV(M, K10_BM));
-  sgemmWarptiling<K10_BM, K10_BN, K10_BK, K10_WM, K10_WN, K10_WMITER,
-                  K10_WNITER, K10_TM, K10_TN>
+  sgemmWarptiling<K10_BM, K10_BN, K10_BK, K10_WM, K10_WN, K10_WNITER, K10_TM,
+                  K10_TN, K10_NUM_THREADS>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
