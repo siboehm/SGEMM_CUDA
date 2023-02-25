@@ -7,7 +7,7 @@
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
 
-#define CEIL_DIV(M, N) ((M) + (N)-1) / (N)
+#define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 const int K9_NUM_THREADS = 256;
 
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
