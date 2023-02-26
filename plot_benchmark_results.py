@@ -101,6 +101,9 @@ if __name__ == "__main__":
 
     data = []
     for filename in results_dir.glob("*.txt"):
+        # filenames have the format: <kernel_nr>_output.txt
+        if not filename.stem.split("_")[0].isdigit() and "_output" not in filename.stem:
+            continue
         results_dict = parse_file(filename)
         kernel_nr = int(filename.stem.split("_")[0])
         for size, gflops in zip(results_dict["size"], results_dict["gflops"]):

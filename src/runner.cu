@@ -326,10 +326,10 @@ void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
   const uint K10_NUM_THREADS = 128;
   const uint K10_BN = 128;
   const uint K10_BM = 64;
-  const uint K10_BK = 8;
+  const uint K10_BK = 16;
   const uint K10_WN = 64;
   const uint K10_WM = 32;
-  const uint K10_WNITER = 2;
+  const uint K10_WNITER = 1;
   const uint K10_TN = 4;
   const uint K10_TM = 4;
   dim3 blockDim(K10_NUM_THREADS);
