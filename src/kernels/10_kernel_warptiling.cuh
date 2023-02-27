@@ -10,6 +10,73 @@
 #define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 const int WARPSIZE = 32; // warpSize is not constexpr
 
+namespace wt {
+template <const int BM, const int BN, const int BK, const int rowStrideA,
+          const int rowStrideB>
+__device__ void loadFromGmem(int N, int K, float *A, float *B, float *As,
+                             float *Bs, int innerRowA, int innerColA,
+                             int innerRowB, int innerColB) {
+  for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
+    float4 tmp = reinterpret_cast<float4 *>(
+        &A[(innerRowA + offset) * K + innerColA * 4])[0];
+    // transpose A while storing it
+    As[(innerColA * 4 + 0) * BM + innerRowA + offset] = tmp.x;
+    As[(innerColA * 4 + 1) * BM + innerRowA + offset] = tmp.y;
+    As[(innerColA * 4 + 2) * BM + innerRowA + offset] = tmp.z;
+    As[(innerColA * 4 + 3) * BM + innerRowA + offset] = tmp.w;
+  }
+
+  for (uint offset = 0; offset + rowStrideB <= BK; offset += rowStrideB) {
+    reinterpret_cast<float4 *>(
+        &Bs[(innerRowB + offset) * BN + innerColB * 4])[0] =
+        reinterpret_cast<float4 *>(
+            &B[(innerRowB + offset) * N + innerColB * 4])[0];
+  }
+}
+
+template <const int BM, const int BN, const int BK, const int WM, const int WN,
+          const int WMITER, const int WNITER, const int WSUBM, const int WSUBN,
+          const int TM, const int TN>
+__device__ void
+processFromSmem(float *regM, float *regN, float *threadResults, const float *As,
+                const float *Bs, const uint warpRow, const uint warpCol,
+                const uint threadRowInWarp, const uint threadColInWarp) {
+  for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
+    // populate registers for whole warptile
+    for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+      for (uint i = 0; i < TM; ++i) {
+        regM[wSubRowIdx * TM + i] =
+            As[(dotIdx * BM) + warpRow * WM + wSubRowIdx * WSUBM +
+               threadRowInWarp * TM + i];
+      }
+    }
+    for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
+      for (uint i = 0; i < TN; ++i) {
+        regN[wSubColIdx * TN + i] =
+            Bs[(dotIdx * BN) + warpCol * WN + wSubColIdx * WSUBN +
+               threadColInWarp * TN + i];
+      }
+    }
+
+    // execute warptile matmul
+    for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
+      for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
+        // calculate per-thread results
+        for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
+          for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
+            threadResults[(wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
+                          (wSubColIdx * TN) + resIdxN] +=
+                regM[wSubRowIdx * TM + resIdxM] *
+                regN[wSubColIdx * TN + resIdxN];
+          }
+        }
+      }
+    }
+  }
+}
+
+} // namespace wt
+
 /*
  * @tparam BM The threadblock size for M dimension SMEM caching.
  * @tparam BN The threadblock size for N dimension SMEM caching.
@@ -71,56 +138,12 @@ __global__ void __launch_bounds__(NUM_THREADS)
 
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
-    for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
-      float4 tmp = reinterpret_cast<float4 *>(
-          &A[(innerRowA + offset) * K + innerColA * 4])[0];
-      // transpose A while storing it
-      As[(innerColA * 4 + 0) * BM + innerRowA + offset] = tmp.x;
-      As[(innerColA * 4 + 1) * BM + innerRowA + offset] = tmp.y;
-      As[(innerColA * 4 + 2) * BM + innerRowA + offset] = tmp.z;
-      As[(innerColA * 4 + 3) * BM + innerRowA + offset] = tmp.w;
-    }
-
-    for (uint offset = 0; offset + rowStrideB <= BK; offset += rowStrideB) {
-      reinterpret_cast<float4 *>(
-          &Bs[(innerRowB + offset) * BN + innerColB * 4])[0] =
-          reinterpret_cast<float4 *>(
-              &B[(innerRowB + offset) * N + innerColB * 4])[0];
-    }
+    wt::loadFromGmem<BM, BN, BK, rowStrideA, rowStrideB>(
+        N, K, A, B, As, Bs, innerRowA, innerColA, innerRowB, innerColB);
     __syncthreads();
-
-    for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
-      // populate registers for whole warptile
-      for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
-        for (uint i = 0; i < TM; ++i) {
-          regM[wSubRowIdx * TM + i] =
-              As[(dotIdx * BM) + warpRow * WM + wSubRowIdx * WSUBM +
-                 threadRowInWarp * TM + i];
-        }
-      }
-      for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
-        for (uint i = 0; i < TN; ++i) {
-          regN[wSubColIdx * TN + i] =
-              Bs[(dotIdx * BN) + warpCol * WN + wSubColIdx * WSUBN +
-                 threadColInWarp * TN + i];
-        }
-      }
-
-      // execute warptile matmul
-      for (uint wSubRowIdx = 0; wSubRowIdx < WMITER; ++wSubRowIdx) {
-        for (uint wSubColIdx = 0; wSubColIdx < WNITER; ++wSubColIdx) {
-          // calculate per-thread results
-          for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
-            for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
-              threadResults[(wSubRowIdx * TM + resIdxM) * (WNITER * TN) +
-                            (wSubColIdx * TN) + resIdxN] +=
-                  regM[wSubRowIdx * TM + resIdxM] *
-                  regN[wSubColIdx * TN + resIdxN];
-            }
-          }
-        }
-      }
-    }
+    wt::processFromSmem<BM, BN, BK, WM, WN, WMITER, WNITER, WSUBM, WSUBN, TM,
+                        TN>(regM, regN, threadResults, As, Bs, warpRow, warpCol,
+                            threadRowInWarp, threadColInWarp);
     A += BK;     // move BK columns to right
     B += BK * N; // move BK rows down
     __syncthreads();
