@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   if (getenv("DEVICE") != NULL) {
     deviceIdx = atoi(getenv("DEVICE"));
   }
-  cudaSetDevice(deviceIdx);
+  cudaCheck(cudaSetDevice(deviceIdx));
 
   printf("Running kernel %d on device %d.\n", kernel_num, deviceIdx);
 
