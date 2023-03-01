@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
       run_kernel(kernel_num, m, n, k, alpha, dA, dB, beta, dC,
                  handle); // Executes the kernel, modifies the result matrix
       cudaCheck(cudaDeviceSynchronize());
+      cudaCheck(cudaGetLastError()); // Check for async errors during kernel run
       cudaMemcpy(C, dC, sizeof(float) * m * n, cudaMemcpyDeviceToHost);
       cudaMemcpy(C_ref, dC_ref, sizeof(float) * m * n, cudaMemcpyDeviceToHost);
 
