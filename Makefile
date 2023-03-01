@@ -1,4 +1,4 @@
-.PHONY: all build clean profile bench
+.PHONY: all build debug clean profile bench
 
 CMAKE := cmake
 NINJA := ninja
@@ -10,8 +10,13 @@ all: build
 
 build:
 	@mkdir -p $(BUILD_DIR)
-	@cd $(BUILD_DIR) && $(CMAKE) .. -G Ninja
-	@$(NINJA) -C $(BUILD_DIR)
+	@cd $(BUILD_DIR) && $(CMAKE) -DCMAKE_BUILD_TYPE=Release ..
+	@$(MAKE) -C $(BUILD_DIR)
+
+debug:
+	@mkdir -p $(BUILD_DIR)
+	@cd $(BUILD_DIR) && $(CMAKE) -DCMAKE_BUILD_TYPE=Debug ..
+	@$(MAKE) -C $(BUILD_DIR)
 
 clean:
 	@rm -rf $(BUILD_DIR)
