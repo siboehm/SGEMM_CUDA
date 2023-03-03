@@ -107,7 +107,7 @@ __global__ void __launch_bounds__(NUM_THREADS)
   __shared__ float Bs[2 * BK * BN];
 
   // setup double buffering split
-  bool doubleBufferIdx = threadIdx.x > (NUM_THREADS / 2);
+  bool doubleBufferIdx = threadIdx.x >= (NUM_THREADS / 2);
 
   // Move blocktile to beginning of A's row and B's column
   A += cRow * BM * K;
