@@ -12,7 +12,7 @@ const std::string errLogFile = "matrixValidationFailure.txt";
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    std::cerr << "Please select a kernel (range 0 - 9, 0 for NVIDIA cuBLAS)"
+    std::cerr << "Please select a kernel (range 0 - 11, 0 for NVIDIA cuBLAS)"
               << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   printf("Running kernel %d on device %d.\n", kernel_num, deviceIdx);
 
   // print some device info
-  // CudaDeviceInfo();
+  CudaDeviceInfo();
 
   // Declare the handle, create the handle, cublasCreate will return a value of
   // type cublasStatus_t to determine whether the handle was created
