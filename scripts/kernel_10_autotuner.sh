@@ -98,7 +98,7 @@ sed -i "s/const uint K10_TM = .*/const uint K10_TM = $TM;/" $RUNNER
 sed -i "s/const uint K10_TN = .*/const uint K10_TN = $TN;/" $RUNNER
 
 # Rebuild the program
-ninja
+make
 
 echo "($CONFIG_NUM/$TOTAL_CONFIGS): BK=$BK BM=$BM BN=$BN WM=$WM WN=$WN WN_ITER=$WN_ITER TM=$TM TN=$TN NUM_THREADS=$NUM_THREADS" |& tee -a $OUTPUT
 # Run the benchmark and get the result

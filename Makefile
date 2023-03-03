@@ -1,7 +1,6 @@
 .PHONY: all build debug clean profile bench
 
 CMAKE := cmake
-NINJA := ninja
 
 BUILD_DIR := build
 BENCHMARK_DIR := benchmark_results

@@ -72,7 +72,7 @@ for bk in ${BK_VALUES[@]}; do
             sed -i "s/const int K9_NUM_THREADS = .*/const int K9_NUM_THREADS = $nt;/" $KERNEL
             
             # Rebuild the program
-            ninja 
+            make 
 
             echo "($CONFIG_NUM/$TOTAL_CONFIGS): BK=$bk TM=$tm TN=$tn BM=$bm BN=$bn NUM_THREADS=$nt" |& tee -a $OUTPUT
             # Run the benchmark and get the result
