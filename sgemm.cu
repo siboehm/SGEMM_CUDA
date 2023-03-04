@@ -110,7 +110,8 @@ int main(int argc, char **argv) {
       if (!verify_matrix(C_ref, C, m * n)) {
         std::cout
             << "Failed to pass the correctness verification against NVIDIA "
-               "cuBLAS.";
+               "cuBLAS."
+            << std::endl;
         if (m <= 128) {
           std::cout << " Logging faulty output into " << errLogFile << "\n";
           std::ofstream fs;
