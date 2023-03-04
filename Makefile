@@ -1,4 +1,4 @@
-.PHONY: all build debug clean profile bench
+.PHONY: all build debug clean profile bench cuobjdump
 
 CMAKE := cmake
 
@@ -19,6 +19,9 @@ debug:
 
 clean:
 	@rm -rf $(BUILD_DIR)
+
+cuobjdump: build
+	@cuobjdump -arch sm_86 -sass -fun $$(cuobjdump -symbols build/sgemm | grep -i naive | awk '{print $$NF}') build/sgemm | c++filt > build/cuobjdump.sass
 
 # Usage: make profile KERNEL=<integer> PREFIX=<optional string>
 profile: build
