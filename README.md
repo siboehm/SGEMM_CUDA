@@ -9,11 +9,11 @@ Running the kernels on a NVIDIA A6000 (Ampere):
 
 ![](benchmark_results.png)
 
-GFLOPs at matrix size 4092x4092:
+GFLOPs at matrix size 4096x4096:
 <!-- benchmark_results -->
 | Kernel                              |  GFLOPs/s | Performance relative to cuBLAS |
 |:------------------------------------|----------:|:-------------------------------|
-| 1: Naive                            |     `309` | 1.3%                           |
+| 1: Naive                            |   `309.0` | 1.3%                           |
 | 2: GMEM Coalescing                  |  `1986.5` | 8.5%                           |
 | 3: SMEM Caching                     |  `2980.3` | 12.8%                          |
 | 4: 1D Blocktiling                   |  `8474.7` | 36.5%                          |
