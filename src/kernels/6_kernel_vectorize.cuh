@@ -40,12 +40,8 @@ __global__ void sgemmVectorize(int M, int N, int K, float alpha, float *A,
   float regM[TM] = {0.0};
   float regN[TN] = {0.0};
 
-// outer-most loop over block tiles
-#pragma unroll
+  // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
-    if (bkIdx != 0) {
-      __syncthreads();
-    }
     // populate the SMEM caches
     // transpose A while loading it
     float4 tmp =
@@ -79,6 +75,7 @@ __global__ void sgemmVectorize(int M, int N, int K, float alpha, float *A,
         }
       }
     }
+    __syncthreads();
   }
 
   // write out the results

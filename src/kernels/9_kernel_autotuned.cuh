@@ -54,9 +54,6 @@ __global__ void __launch_bounds__(K9_NUM_THREADS)
   // outer-most loop over block tiles
   for (uint bkIdx = 0; bkIdx < K; bkIdx += BK) {
     // populate the SMEM caches
-    if (bkIdx != 0) {
-      __syncthreads();
-    }
     for (uint offset = 0; offset + rowStrideA <= BM; offset += rowStrideA) {
       float4 tmp = reinterpret_cast<float4 *>(
           &A[(innerRowA + offset) * K + innerColA * 4])[0];
@@ -96,6 +93,7 @@ __global__ void __launch_bounds__(K9_NUM_THREADS)
         }
       }
     }
+    __syncthreads();
     // advance blocktile
     A += BK;     // move BK columns to right
     B += BK * N; // move BK rows down
