@@ -288,12 +288,19 @@ void runSgemmResolveBankExtraCol(int M, int N, int K, float alpha, float *A,
 
 void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
                        float beta, float *C) {
+  // A100
+  // const uint K9_BK = 16;
+  // const uint K9_TM = 4;
+  // const uint K9_TN = 4;
+  // const uint K9_BM = 64;
+  // const uint K9_BN = 64;
+  // A6000
   const uint K9_BK = 16;
-  const uint K9_TM = 4;
-  const uint K9_TN = 4;
+  const uint K9_TM = 8;
+  const uint K9_TN = 8;
+  const uint K9_BM = 128;
+  const uint K9_BN = 128;
   dim3 blockDim(K9_NUM_THREADS);
-  const uint K9_BM = 64;
-  const uint K9_BN = 64;
 
   static_assert(
       (K9_NUM_THREADS * 4) % K9_BK == 0,
@@ -324,25 +331,25 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
 void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   // Settings for A100
-  const uint K10_NUM_THREADS = 128;
-  const uint K10_BN = 128;
-  const uint K10_BM = 64;
-  const uint K10_BK = 16;
-  const uint K10_WN = 64;
-  const uint K10_WM = 32;
-  const uint K10_WNITER = 1;
-  const uint K10_TN = 4;
-  const uint K10_TM = 4;
-  // Settings for A6000
   // const uint K10_NUM_THREADS = 128;
   // const uint K10_BN = 128;
-  // const uint K10_BM = 128;
+  // const uint K10_BM = 64;
   // const uint K10_BK = 16;
   // const uint K10_WN = 64;
-  // const uint K10_WM = 64;
-  // const uint K10_WNITER = 4;
+  // const uint K10_WM = 32;
+  // const uint K10_WNITER = 1;
   // const uint K10_TN = 4;
-  // const uint K10_TM = 8;
+  // const uint K10_TM = 4;
+  // Settings for A6000
+  const uint K10_NUM_THREADS = 128;
+  const uint K10_BN = 128;
+  const uint K10_BM = 128;
+  const uint K10_BK = 16;
+  const uint K10_WN = 64;
+  const uint K10_WM = 64;
+  const uint K10_WNITER = 4;
+  const uint K10_TN = 4;
+  const uint K10_TM = 8;
   dim3 blockDim(K10_NUM_THREADS);
 
   constexpr uint NUM_WARPS = K10_NUM_THREADS / 32;

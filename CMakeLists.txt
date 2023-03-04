@@ -9,7 +9,7 @@ include(CheckLanguage)
 check_language(CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CUDA_COMPUTE_CAPABILITY 80)
+set(CUDA_COMPUTE_CAPABILITY 86)
 
 # in debug mode, add debug symbols to device code
 # this disables most optimizations and kills performance

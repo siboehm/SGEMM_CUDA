@@ -2,8 +2,9 @@ name: SGEMM_CUDA
 channels:
   - conda-forge
 dependencies:
-  - cmake
   - python
+  - black
+  - cmake
   - matplotlib
   - seaborn
   - tabulate
