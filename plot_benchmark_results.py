@@ -31,6 +31,7 @@ KERNEL_NAMES = {
     8: "Avoid Bank Conflicts (Offset)",
     9: "Autotuning",
     10: "Warptiling",
+    11: "Double Buffering",
 }
 
 
