@@ -392,25 +392,25 @@ void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
 void runSgemmDoubleBuffering(int M, int N, int K, float alpha, float *A,
                              float *B, float beta, float *C) {
   // Settings for A100
-  const uint K11_NUM_THREADS = 256;
-  const uint K11_BN = 128;
-  const uint K11_BM = 64;
-  const uint K11_BK = 16;
-  const uint K11_WN = 32;
-  const uint K11_WM = 32;
-  const uint K11_WNITER = 2;
-  const uint K11_TN = 4;
-  const uint K11_TM = 4;
-  // Settings for A6000
   // const uint K11_NUM_THREADS = 256;
-  // const uint K11_BN = 256;
-  // const uint K11_BM = 128;
+  // const uint K11_BN = 128;
+  // const uint K11_BM = 64;
   // const uint K11_BK = 16;
   // const uint K11_WN = 32;
-  // const uint K11_WM = 128;
-  // const uint K11_WNITER = 1;
-  // const uint K11_TN = 8;
-  // const uint K11_TM = 8;
+  // const uint K11_WM = 32;
+  // const uint K11_WNITER = 2;
+  // const uint K11_TN = 4;
+  // const uint K11_TM = 4;
+  // Settings for A6000
+  const uint K11_NUM_THREADS = 256;
+  const uint K11_BN = 256;
+  const uint K11_BM = 128;
+  const uint K11_BK = 16;
+  const uint K11_WN = 32;
+  const uint K11_WM = 128;
+  const uint K11_WNITER = 1;
+  const uint K11_TN = 8;
+  const uint K11_TM = 8;
   dim3 blockDim(K11_NUM_THREADS);
 
   constexpr uint NUM_WARPS = K11_NUM_THREADS / 32;
@@ -447,6 +447,57 @@ void runSgemmDoubleBuffering(int M, int N, int K, float alpha, float *A,
   dim3 gridDim(CEIL_DIV(N, K11_BN), CEIL_DIV(M, K11_BM));
   sgemmDoubleBuffering<K11_BM, K11_BN, K11_BK, K11_WM, K11_WN, K11_WNITER,
                        K11_TM, K11_TN, K11_NUM_THREADS>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void runSgemmDoubleBuffering2(int M, int N, int K, float alpha, float *A,
+                              float *B, float beta, float *C) {
+  // Settings for A6000
+  const uint K12_NUM_THREADS = 128;
+  const uint K12_BN = 128;
+  const uint K12_BM = 128;
+  const uint K12_BK = 16;
+  const uint K12_WN = 64;
+  const uint K12_WM = 64;
+  const uint K12_WNITER = 4;
+  const uint K12_TN = 4;
+  const uint K12_TM = 8;
+  dim3 blockDim(K12_NUM_THREADS);
+
+  constexpr uint NUM_WARPS = K12_NUM_THREADS / 32;
+
+  // warptile in threadblocktile
+  static_assert((K12_BN % K12_WN == 0) and (K12_BM % K12_WM == 0));
+  static_assert((K12_BN / K12_WN) * (K12_BM / K12_WM) == NUM_WARPS);
+
+  // threads in warpsubtile
+  static_assert((K12_WM * K12_WN) % (WARPSIZE * K12_TM * K12_TN * K12_WNITER) ==
+                0);
+  constexpr uint K12_WMITER =
+      (K12_WM * K12_WN) / (32 * K12_TM * K12_TN * K12_WNITER);
+  // warpsubtile in warptile
+  static_assert((K12_WM % K12_WMITER == 0) and (K12_WN % K12_WNITER == 0));
+
+  static_assert((K12_NUM_THREADS * 4) % K12_BK == 0,
+                "NUM_THREADS*4 must be multiple of K9_BK to avoid quantization "
+                "issues during GMEM->SMEM tiling (loading only parts of the "
+                "final row of Bs during each iteraion)");
+  static_assert((K12_NUM_THREADS * 4) % K12_BN == 0,
+                "NUM_THREADS*4 must be multiple of K9_BN to avoid quantization "
+                "issues during GMEM->SMEM tiling (loading only parts of the "
+                "final row of As during each iteration)");
+  static_assert(K12_BN % (16 * K12_TN) == 0,
+                "BN must be a multiple of 16*TN to avoid quantization effects");
+  static_assert(K12_BM % (16 * K12_TM) == 0,
+                "BM must be a multiple of 16*TM to avoid quantization effects");
+  static_assert((K12_BM * K12_BK) % (4 * K12_NUM_THREADS) == 0,
+                "BM*BK must be a multiple of 4*256 to vectorize loads");
+  static_assert((K12_BN * K12_BK) % (4 * K12_NUM_THREADS) == 0,
+                "BN*BK must be a multiple of 4*256 to vectorize loads");
+
+  dim3 gridDim(CEIL_DIV(N, K12_BN), CEIL_DIV(M, K12_BM));
+  runSgemmDoubleBuffering2<K12_BM, K12_BN, K12_BK, K12_WM, K12_WN, K12_WNITER,
+                           K12_TM, K12_TN, K12_NUM_THREADS>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
@@ -488,6 +539,9 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     break;
   case 11:
     runSgemmDoubleBuffering(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 12:
+    runSgemmDoubleBuffering2(M, N, K, alpha, A, B, beta, C);
     break;
   default:
     throw std::invalid_argument("Unknown kernel number");

@@ -12,15 +12,15 @@ const std::string errLogFile = "matrixValidationFailure.txt";
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    std::cerr << "Please select a kernel (range 0 - 11, 0 for NVIDIA cuBLAS)"
+    std::cerr << "Please select a kernel (range 0 - 12, 0 for NVIDIA cuBLAS)"
               << std::endl;
     exit(EXIT_FAILURE);
   }
 
   // get kernel number
   int kernel_num = std::stoi(argv[1]);
-  if (kernel_num < 0 || kernel_num > 11) {
-    std::cerr << "Please enter a valid kernel number (0-11)" << std::endl;
+  if (kernel_num < 0 || kernel_num > 12) {
+    std::cerr << "Please enter a valid kernel number (0-12)" << std::endl;
     exit(EXIT_FAILURE);
   }
 
