@@ -35,7 +35,7 @@ GFLOPs at matrix size 4096x4096:
     ```cmake
     set(CUDA_COMPUTE_CAPABILITY 80)
     ```
-1. Build: `make`
+1. Build: `mkdir build && cd build && cmake .. && cmake --build .`
 1. Run one of the kernels: `DEVICE=<device_id> ./sgemm <kernel number>`
 1. Profiling via [NVIDIA Nsight Compute](https://developer.nvidia.com/nsight-compute) (ncu): `make profile KERNEL=<kernel number>`
 
