@@ -29,7 +29,7 @@ GFLOPs at matrix size 4096x4096:
 
 ## Setup
 
-1. Install dependencies: CUDA toolkit, Python (+ Seaborn), CMake, Ninja. See [environment.yml](environment.yml).
+1. Install dependencies: CUDA toolkit 12, Python (+ Seaborn), CMake, Ninja. See [environment.yml](environment.yml).
 1. Configure NVCC compilation parameters. Look up your GPUs compute
    capability [here](https://developer.nvidia.com/cuda-gpus). Then configure the `CMakeLists.txt` and change:
     ```cmake
