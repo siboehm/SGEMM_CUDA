@@ -112,7 +112,7 @@ __global__ void __launch_bounds__(NUM_THREADS)
 
   // size of the warp subtile
   constexpr uint WMITER = (WM * WN) / (WARPSIZE * TM * TN * WNITER);
-  constexpr uint WSUBM = WM / WMITER; // 64/2=32
+  constexpr uint WSUBM = WM / WMITER; // 64/1=64
   constexpr uint WSUBN = WN / WNITER; // 32/2=16
 
   // Placement of the thread in the warp subtile
