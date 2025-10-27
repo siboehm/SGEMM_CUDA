@@ -21,8 +21,9 @@ __global__ void sgemmResolveBankExtraCol(int M, int N, int K, float alpha,
   const int threadRow = threadIdx.x / (BN / TN);
 
   // allocate space for the current blocktile in smem
-  __shared__ float As[BM * BK];
-  const int extraCols = 5;
+  const int extraRows = 4;
+  __shared__ float As[(BM + extraRows) * BK];
+  const int extraCols = 16;
   __shared__ float Bs[BK * (BN + extraCols)];
 
   // Move blocktile to beginning of A's row and B's column
@@ -48,16 +49,18 @@ __global__ void sgemmResolveBankExtraCol(int M, int N, int K, float alpha,
     // transpose A while loading it
     float4 tmp =
         reinterpret_cast<float4 *>(&A[innerRowA * K + innerColA * 4])[0];
-    As[(innerColA * 4 + 0) * BM + innerRowA] = tmp.x;
-    As[(innerColA * 4 + 1) * BM + innerRowA] = tmp.y;
-    As[(innerColA * 4 + 2) * BM + innerRowA] = tmp.z;
-    As[(innerColA * 4 + 3) * BM + innerRowA] = tmp.w;
+    As[(innerColA * 4 + 0) * (BM + extraRows) + innerRowA] = tmp.x;
+    As[(innerColA * 4 + 1) * (BM + extraRows) + innerRowA] = tmp.y;
+    As[(innerColA * 4 + 2) * (BM + extraRows) + innerRowA] = tmp.z;
+    As[(innerColA * 4 + 3) * (BM + extraRows) + innerRowA] = tmp.w;
 
     tmp = reinterpret_cast<float4 *>(&B[innerRowB * N + innerColB * 4])[0];
-    Bs[innerRowB * (BN + extraCols) + innerColB * 4 + 0] = tmp.x;
-    Bs[innerRowB * (BN + extraCols) + innerColB * 4 + 1] = tmp.y;
-    Bs[innerRowB * (BN + extraCols) + innerColB * 4 + 2] = tmp.z;
-    Bs[innerRowB * (BN + extraCols) + innerColB * 4 + 3] = tmp.w;
+    constexpr int nSmemLanes = 32;
+    const int iSmemBankRow = innerColB / (nSmemLanes / 4);
+    Bs[innerRowB * (BN + extraCols) + (innerColB + iSmemBankRow) * 4 + 0] = tmp.x;
+    Bs[innerRowB * (BN + extraCols) + (innerColB + iSmemBankRow) * 4 + 1] = tmp.y;
+    Bs[innerRowB * (BN + extraCols) + (innerColB + iSmemBankRow) * 4 + 2] = tmp.z;
+    Bs[innerRowB * (BN + extraCols) + (innerColB + iSmemBankRow) * 4 + 3] = tmp.w;
     __syncthreads();
 
     // advance blocktile
@@ -68,10 +71,11 @@ __global__ void sgemmResolveBankExtraCol(int M, int N, int K, float alpha,
     for (uint dotIdx = 0; dotIdx < BK; ++dotIdx) {
       // block into registers
       for (uint i = 0; i < TM; ++i) {
-        regM[i] = As[dotIdx * BM + threadRow * TM + i];
+        regM[i] = As[dotIdx * (BN + extraRows) + threadRow * TM + i];
       }
       for (uint i = 0; i < TN; ++i) {
-        regN[i] = Bs[dotIdx * (BN + extraCols) + threadCol * TN + i];
+        const int iSmemBankRow = threadCol / (nSmemLanes / TN);
+        regN[i] = Bs[dotIdx * (BN + extraCols) + threadCol * TN + iSmemBankRow * 4 + i];
       }
       for (uint resIdxM = 0; resIdxM < TM; ++resIdxM) {
         for (uint resIdxN = 0; resIdxN < TN; ++resIdxN) {
